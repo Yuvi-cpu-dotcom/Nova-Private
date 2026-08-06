@@ -1,0 +1,425 @@
+========================================
+  Duck Detector — Security Scan Report
+========================================
+
+App Version : 2026.07.15-220804f96035 (488)
+Build Hash  : 220804f96035
+Build Time  : 2026-07-15 04:02:42 (UTC)
+Report Time : 2026-08-06 23:15:39 (GMT+05:30)
+
+----- OVERVIEW -----
+Status  : Danger
+Summary : Start with Bootloader and SELinux.
+
+Metrics:
+  Danger: 3
+  Warning: 5
+  Ready: 15
+  Pending: 0
+
+----- TOP FINDINGS -----
+  [DANGER] Bootloader
+    2 critical boot integrity signal(s)
+    Unlocked state, attestation contradictions, broken certificate trust, or verified-boot failures indicate reduced boot-chain trust.
+  [DANGER] SELinux
+    Enforcing with KSU context materialized
+    SELinux is enforcing and the visible policy surface looks internally consistent. The dedicated app_zygote carrier hit anomalous /proc/self/attr/current write outcomes while probing privileged contexts: KernelSU, KernelSU file, Xposed data. The zygotePreload app_zygote carrier observed a policyload/access seqno split; treat this as KernelSU-specific evidence bounded to the preload carrier. A trusted DirtySepolicy-style access query reported system_server execmem as allowed. Audit rewrite checks remained non-proving from the current app context. The context validity oracle accepted both KSU-specific contexts from the current carrier.
+  [DANGER] System Properties
+    1 high-risk property or coherence signal(s)
+    Property values, raw boot contradictions, cross-source drift, cross-check drift, or raw property-area residue indicate insecure build state, spoofing risk, or modified boot context.
+
+----- DETECTOR CARDS -----
+
+  [DANGER] Bootloader
+  Verdict: 2 critical boot integrity signal(s)
+  Impact:
+
+  [DANGER] SELinux
+  Verdict: Enforcing with KSU context materialized
+  Impact:
+  Policy notes:
+  Audit notes:
+  References:
+    • SELinux paradox: permission denied can prove enforcing mode.
+    • Enforcing mode blocks disallowed actions instead of only logging them.
+    • Production Android devices are expected to run enforcing SELinux.
+    • app_zygote can query SELinux context validity through selinux_check_context, which ultimately writes to /sys/fs/selinux/context.
+    • A dedicated app_zygote carrier can also probe privileged context materialization by writing candidate labels to /proc/self/attr/current and classifying non-EINVAL outcomes.
+    • The policyload/access seqno oracle must be captured inside zygotePreloadName; the isolated child may lose app_zygote SELinuxfs access and should downgrade missing coverage to info.
+    • Audit or log surfaces can be rewritten in user space, so missing suspicious tcontext values is not always proof.
+    • Readable AVC denial lines should be treated as audit-surface leakage, not as direct proof of a root process.
+    • comm, exe, path, and name fields inside AVC logs are supporting hints, not standalone proof of a live su daemon.
+
+  [DANGER] System Properties
+  Verdict: 1 high-risk property or coherence signal(s)
+  Impact:
+
+  [WARNING] Custom ROM
+  Verdict: 2 ROM signatures + 1 native symbol trace(s) detected
+  Impact:
+
+  [WARNING] Dangerous Apps
+  Verdict: 1 risky package(s) surfaced
+  Packages:
+    MT Manager (bin.mt.termex) methods: /sdcard/MT2
+  Context:
+    Inventory: 118 legacy packages
+    PackageManager: Full inventory access
+    Visible packages: 216
+    Categories: Cracking / mod
+    Probe families: PackageManager, createPackageContext + ZipFile, Open APK FD, Android/data Directory Listing +9
+  Target apps:
+    LSPosed Manager (org.lsposed.manager) [Hook framework]
+    LSPatch (org.lsposed.lspatch) [Hook framework]
+    Xposed Installer (de.robv.android.xposed.installer) [Hook framework]
+    Magisk alpha (io.github.vvb2060.magisk) [Hook framework]
+    Magisk (com.topjohnwu.magisk) [Hook framework]
+    TaiChi (me.weishu.exp) [Hook framework]
+    SimpleHook (me.simpleHook) [Hook framework]
+    HookVip Pro (top.hookvip.pro) [Hook framework]
+    JiuWu Hook (Hook.JiuWu.Xp) [Hook framework]
+    HookVip (com.bug.hookvip) [Hook framework]
+    Lin Xposed (lin.xposed) [Hook framework]
+    Hide My Applist (com.tsng.hidemyapplist) [App hiding]
+    HMA (com.tsng.pzyhrx.hma) [App hiding]
+    Hide Blacklist (com.topmiaohan.hidebllist) [App hiding]
+    Zako Hide (zako.zako.zako) [App hiding]
+    SuperSU (eu.chainfire.supersu) [Root tool]
+    Superuser (com.noshufou.android.su) [Root tool]
+    Superuser (com.koushikdutta.superuser) [Root tool]
+    Superuser (com.thirdparty.superuser) [Root tool]
+    SU (com.yellowes.su) [Root tool]
+    KingRoot (com.kingroot.kinguser) [Root tool]
+    KingoRoot (com.kingo.root) [Root tool]
+    OneClickRoot (com.smedialink.oneclickroot) [Root tool]
+    KSU Next (com.rifsxd.ksunext) [Root tool]
+    KSU WebUI (io.github.a13e300.ksuwebui) [Root tool]
+    SuKiSu Ultra (com.sukisu.ultra) [Root tool]
+    ReSukisu (com.resukisu.resukisu) [Root tool]
+    SKRoot (com.linux.permissionmanager) [Root tool]
+    Fake Location (com.lerist.fakelocation) [Fake location]
+    Motion Emulator (com.zhufucyd.motion_emulator) [Fake location]
+    VIP Kill (com.cshlolss.vipkill) [Cracking / mod]
+    Modify Installer (com.modify.installer) [Cracking / mod]
+    Lucky Patcher (lucky.patcher) [Cracking / mod]
+    Lucky Patcher (com.chelpus.lackypatch) [Cracking / mod]
+    Lucky Patcher (com.android.vending.billing.InAppBillingService.LUCK) [Cracking / mod]
+    APKTool (ru.maximoff.apktool) [Cracking / mod]
+    MT Manager (bin.mt.termex) [Cracking / mod]
+    QAuxiliary (io.github.qauxv) [QQ / WeChat hook]
+    WeChat Xposed (com.fkzhang.wechatxposed) [QQ / WeChat hook]
+    BiliRoaming (me.iacn.biliroaming) [QQ / WeChat hook]
+    HookQQ (com.padi.hook.hookqq) [QQ / WeChat hook]
+    TIM Tool (top.sacz.timtool) [QQ / WeChat hook]
+    HyperCeiler (com.sevtinge.hyperceiler) [System modification]
+    Thanox (github.tornaco.android.thanos) [System modification]
+    ShortX (tornaco.apps.shortx) [System modification]
+    Scene (com.omarea.vtools) [System modification]
+    Customiuizer (name.monwf.customiuizer) [System modification]
+    Codestore Toolkit (com.coderstory.toolkit) [System modification]
+    Device ID Changer (com.silverlab.app.deviceidchanger.free) [Device ID modification]
+    Guise (com.houvven.guise) [Device ID modification]
+    IMPad (com.houvven.impad) [Device ID modification]
+    Privacy Space (cn.geektang.privacyspace) [Privacy bypass]
+    Shizuku (moe.shizuku.privileged.api) [Privacy bypass]
+    Storage Isolation (me.gm.cleaner) [Privacy bypass]
+    Storage Redirect (moe.shizuku.redirectstorage) [Privacy bypass]
+    Freezer (nep.timeline.freezer) [Freezer / background]
+    NoActive (cn.myflv.noactive) [Freezer / background]
+    StopApp (web1n.stopapp) [Freezer / background]
+    Termux (com.termux) [Terminal / dev]
+    ADB Helper (com.didjdk.adbhelper) [Terminal / dev]
+    IceCore (me.bingyue.IceCore) [Misc]
+    Dyoo (o.dyoo) [Misc]
+    Serendipity (com.demo.serendipity) [Misc]
+    AutoDaily (me.teble.xposed.autodaily) [Misc]
+    Portal (moe.fuqiuluo.portal) [Misc]
+    XposedSmsCode (com.github.tianma8023.xposed.smscode) [Misc]
+    HKF (xzr.hkf) [Misc]
+    Konabess (xzr.konabess) [Misc]
+    DataBackup (com.xayah.databackup.foss) [Misc]
+    ByYoung Setting (com.byyoung.setting) [Misc]
+    Algorithm Aide Pro (com.junge.algorithmAidePro) [Misc]
+    Atlas Toolbox (tmgp.atlas.toolbox) [Misc]
+    NP App (com.wn.app.np) [Misc]
+    Saas i18n (top.bienvenido.saas.i18n) [Misc]
+    QuickPay (com.syyf.quickpay) [Misc]
+    ShortX Ext (tornaco.apps.shortx.ext) [Misc]
+    Mio Kitchen (com.mio.kitchen) [Misc]
+    XLua (eu.faircode.xlua) [Misc]
+    DNA Tools (com.dna.tools) [Misc]
+    NoActive Monitor (cn.myflv.monitor.noactive) [Misc]
+    Card Emulator Pro (com.yuanwofei.cardemulator.pro) [Misc]
+    Oshin (com.suqi8.oshin) [Misc]
+    Wauxv (me.hd.wauxv) [Misc]
+    Have Fun (have.fun) [Misc]
+    Miko Client (miko.client) [Misc]
+    FCM Fix (com.kooritea.fcmfix) [Misc]
+    Twifucker (com.twifucker.hachidori) [Misc]
+    LuckyTool (com.luckyzyx.luckytool) [Misc]
+    Lyric Getter (cn.lyric.getter) [Misc]
+    MICTS (com.parallelc.micts) [Misc]
+    Plusne (me.plusne) [Misc]
+    App Retention (com.hchen.appretention) [Misc]
+    Switch Freeform (com.hchen.switchfreeform) [Misc]
+    XiaoWine Lyric (cn.aodlyric.xiaowine) [Misc]
+    RE Telegram (nep.timeline.re_telegram) [Misc]
+    Fuck Rimet (com.fuck.android.rimet) [Misc]
+    Kwai Hook (cn.kwaiching.hook) [Misc]
+    Android X (cn.android.x) [Misc]
+    IAmNotDisabled (cc.aoeiuv020.iamnotdisabled.hook) [Misc]
+    Kwai Tao (vn.kwaiching.tao) [Misc]
+    Plusne (com.nnnen.plusne) [Misc]
+    HMS Push (one.yufz.hmspush) [Misc]
+    XiaoWine (cn.fuckhome.xiaowine) [Misc]
+    TSBattery (com.fankes.tsbattery) [Misc]
+    IAMRKG (com.rkg.IAMRKG) [Misc]
+    Qute (com.ddm.qute) [Misc]
+    Anqu (kk.dk.anqu) [Misc]
+    QQ Module (com.qq.qcxm) [Misc]
+    Wei VIP (com.wei.vip) [Misc]
+    DKNB (dknb.con) [Misc]
+    DKNB (dknb.coo8) [Misc]
+    Jingshi (com.tencent.jingshi) [Misc]
+    JYNB (com.tencent.JYNB) [Misc]
+    Apocalua Run (com.apocalua.run) [Misc]
+    Oppo Theme (io.github.Retmon403.oppotheme) [Misc]
+    High Refresh Rate (com.fankes.enforcehighrefreshrate) [Misc]
+    Bootloader Spoofer (es.chiteroman.bootloaderspoofer) [Misc]
+    Rescue Plan (com.hchai.rescueplan) [Misc]
+
+  [WARNING] LSPosed
+  Verdict: Dirty SELinux policy signal(s)
+  Impact:
+
+  [WARNING] Native Root
+  Verdict: 1 native signal(s) need review
+  Impact:
+
+  [WARNING] TEE
+  Verdict: Policy-backed attestation evidence needs review
+  Highlight signals:
+    Local chain: Verified
+    Boot: Matched
+    Signals: 0 policy hard • 1 policy review • 1 local
+    CRL: Built-in
+  Trust:
+    Local chain: Verified
+    Trust root: Google root
+    Chain layout: len 4 • ext 1 • trusted #1
+    RKP: Not observed
+    CRL: Built-in snapshot • clean
+    Root fingerprint: feb2ea7551ee...
+  Attestation:
+    Tier: TEE • attest TEE • keymaster TEE
+    Versions: attest 3 • keymaster 4 • Android 16.0.0
+    Challenge: Matched • len=32, sha256=1eb0d2b224c4, b64=JBB02C8uNd/XF/i8t/
+    Verified boot: Verified • locked • ccb343dad5aa
+    Boot consistency: Matched • Attested verifiedBootHash matched ro.boot.vbmeta.digest.
+    Device IDs: Not included in attestation
+    Key properties: EC 256 • P-256 • Generated
+    User auth: No user auth required
+    Application: 1 package(s) • 1 signer digest(s)
+  Checks:
+    Indicators: 0 policy hard • 1 policy review • 1 local
+    Key pair: Signature matched certificate • 6462us
+    AES-GCM: Round-trip ok • TEE • 113467us enc
+    Lifecycle: Delete ok • fresh material
+    KeyMint crypto: HMAC-SHA256 ok • Single-use EC ok • ECDH P-256 ok • RSA-PSS SHA-256 ok • AES-CBC/CTR auth ok • AES-CBC padding auth ok • EC SHA-512 auth ok • RSA-PSS SHA-512 auth ok • RSA-PSS PKCS#1 auth ok • RSA OAEP/PKCS#1 auth ok • RSA PKCS#1/OAEP auth ok • RSA-OAEP MGF1 skipped • RSA-OAEP MGF1 auth skipped • RSA-OAEP SHA-256 ok • RSA-OAEP SHA-1 auth ok • EC NONE auth ok • RSA PKCS#1 SHA-1 auth ok • RSA PKCS#1/PSS auth ok
+    Timing: Median 5822us
+    Timing side-channel: Register timer • bound_cpu0 • attested 0.643ms • non-attested 1.114ms • diff -0.470ms • ratio 1.731x • threshold > 1.1x • failedPairs=0/500 • outlierFiltered=5/500 • samples=495 • Positive
+    Oversized challenge: Rejected 256B • 512B • 4096B
+    TEE Simulator generate-mode fingerprint: TEE Simulator generate-mode fingerprint probe unavailable.
+    Keybox: Marker preserved
+    ImportKey narrative: Clean • kind=NONE, origin=IMPORTED, imported marker leaf returned without retained prior narrative.
+    KeyMint VINTF: VINTF declaration matched attested KeyMint version. kind=NONE keymasterVersion=4 attestationVersion=3 vintf=android.hardware.keymaster/IKeymasterDevice/default@4.0 -> keymaster=4,attestation=3
+    Module hash: MODULE_HASH not required by attestation version. getSupplementaryAttestationInfo(MODULE_HASH) returned 1110 DER bytes. kind=NONE expected=f43a40bfaf8e79c4
+    Grant isolated-domain: Clean kind=NONE length=4 uid=99011 • Public: readback failed (public isolated readback failed: IllegalStateException: Could not connect to Keystore service. Keystore may have crashed or not been initialized). | Hidden: readback failed (hidden isolated readback failed: IllegalStateException: Could not connect to Keystore service. Keystore may have crashed or not been initialized). | Private: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.)
+    Grant caller binding: Clean kind=NONE uid=99012 ownerReplay=KEY_NOT_FOUND • Private: owner replay rejected with KEY_NOT_FOUND.
+    Grant access vector: Clean kind=NONE uid=99013 accessVector=256 granteeRead=PERMISSION_DENIED • Private: grantee getKeyEntry(GRANT) rejected with PERMISSION_DENIED.
+    Grant self-domain: Clean kind=NONE length=0 grantId=true • Public: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.) | Hidden: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.) | Private: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.); Grant-attest: Private grant-attest: clean APP getKeyEntry after GRANT custom attestation; baseline APP readback ok.
+    Keystore2: Unexpected reply
+    Legacy keystore: Legacy path not observed
+    listEntries: containsAlias and aliases aligned
+    listEntriesBatched: Cursor semantics aligned
+    Metadata key: KEY_ID normalized
+    Metadata shape: System fields present
+    Pure cert: Null key as expected
+    Pure cert level: No security level exposed
+    Pure cert metadata: Metadata security level exposed
+    Operation path: Native-style errors • updateAadServiceSpecific=true, oversizedUpdateRejected=true, abortInvalidatedHandle=true, compatFallback=false
+    Biometric TEE: User-auth key path available
+    Binder hook: Hook installed
+    Patch mode: generateKey/getKeyEntry aligned
+    Binder chain: Java and binder chains aligned • cycle1=keystoreVsGetKeyEntry=true, generateVsGetKeyEntryLeaf=true, generateVsGetKeyEntryChain=true, keystoreChainLength=4, getKeyEntryChainLength=4, cycle2=keystoreVsGetKeyEntry=true, generateVsGetKeyEntryLeaf=true, generateVsGetKeyEntryChain=true, keystoreChainLength=4, getKeyEntryChainLength=4, suspiciousLeafIssuerSpki=false, deleteEntryRemovedAlias=true
+    Update path: No anomaly • Grant ok
+    Update persistence: Clean kind=NONE prior=4 post=1 leafMatchesMarker=true • kind=NONE, marker leaf returned without retained prior narrative.
+    Pruning: 3/18 invalidated
+    Dual algorithm: RSA/EC chains aligned
+    ID attestation: No comparable IDs exposed
+    StrongBox: Not advertised
+    Native: libbinder.so ioctl GOT entry matched libc. | ioctl prologue matched the on-disk image. | Keystore-style binder honeypot stayed within normal bounds across 3 runs. median_gap=1ns, gap_mad=0ns, noise_floor=10000ns, median_ratio=100%. Keystore-style binder honeypot timing stayed within normal bounds across redundant backends. asm=med2462ns/mad1ns/p9520384ns, libc=med2462ns/mad1ns/p952692ns, syscall=med2461ns/mad1ns/p952538ns gap=1ns, noise_floor=10000ns, ratio=100% timer=arm64_cntvct, affinity=bound_cpu0.
+0/3 suspicious runs • median gap 1ns • noise floor 10.0us • median ratio 1.00x
+arm64_cntvct • bound_cpu0
+    Soter: Soter checks succeeded: Treble service was reachable and ASK/AuthKey/initSigh all succeeded.
+  Network: Built-in revocation snapshot is active; online refresh is awaiting startup consent. This certificate chain is not present in the revocation feed.
+  Certificate count: 4
+
+  --- TEE detailed export ---
+Policy-backed attestation evidence needs review
+Cert 4: CertificateExpiredException
+
+Verdict: SUSPICIOUS
+Tier: TEE
+Trust root: GOOGLE
+Trust summary: Local trust path: Google root, chain verified
+Tamper score: 12
+Evidence count: 54
+Network: Built-in revocation snapshot is active; online refresh is awaiting startup consent. This certificate chain is not present in the revocation feed.
+Soter: Soter checks succeeded: Treble service was reachable and ASK/AuthKey/initSigh all succeeded.
+
+Trust
+- Local chain: Verified
+- Trust root: Google root
+- Chain layout: len 4 • ext 1 • trusted #1
+- RKP: Not observed
+- CRL: Built-in snapshot • clean
+- Root fingerprint: feb2ea7551ee...
+
+Attestation
+- Tier: TEE • attest TEE • keymaster TEE
+- Versions: attest 3 • keymaster 4 • Android 16.0.0
+- Challenge: Matched • len=32, sha256=1eb0d2b224c4, b64=JBB02C8uNd/XF/i8t/
+- Verified boot: Verified • locked • ccb343dad5aa
+- Boot consistency: Matched • Attested verifiedBootHash matched ro.boot.vbmeta.digest.
+- Device IDs: Not included in attestation
+- Key properties: EC 256 • P-256 • Generated
+- User auth: No user auth required
+- Application: 1 package(s) • 1 signer digest(s)
+
+Checks
+- Indicators: 0 policy hard • 1 policy review • 1 local
+- Key pair: Signature matched certificate • 6462us
+- AES-GCM: Round-trip ok • TEE • 113467us enc
+- Lifecycle: Delete ok • fresh material
+- KeyMint crypto: HMAC-SHA256 ok • Single-use EC ok • ECDH P-256 ok • RSA-PSS SHA-256 ok • AES-CBC/CTR auth ok • AES-CBC padding auth ok • EC SHA-512 auth ok • RSA-PSS SHA-512 auth ok • RSA-PSS PKCS#1 auth ok • RSA OAEP/PKCS#1 auth ok • RSA PKCS#1/OAEP auth ok • RSA-OAEP MGF1 skipped • RSA-OAEP MGF1 auth skipped • RSA-OAEP SHA-256 ok • RSA-OAEP SHA-1 auth ok • EC NONE auth ok • RSA PKCS#1 SHA-1 auth ok • RSA PKCS#1/PSS auth ok
+- Timing: Median 5822us
+- Timing side-channel: Register timer • bound_cpu0 • attested 0.643ms • non-attested 1.114ms • diff -0.470ms • ratio 1.731x • threshold > 1.1x • failedPairs=0/500 • outlierFiltered=5/500 • samples=495 • Positive
+- Oversized challenge: Rejected 256B • 512B • 4096B
+- TEE Simulator generate-mode fingerprint: TEE Simulator generate-mode fingerprint probe unavailable.
+- Keybox: Marker preserved
+- ImportKey narrative: Clean • kind=NONE, origin=IMPORTED, imported marker leaf returned without retained prior narrative.
+- KeyMint VINTF: VINTF declaration matched attested KeyMint version. kind=NONE keymasterVersion=4 attestationVersion=3 vintf=android.hardware.keymaster/IKeymasterDevice/default@4.0 -> keymaster=4,attestation=3
+- Module hash: MODULE_HASH not required by attestation version. getSupplementaryAttestationInfo(MODULE_HASH) returned 1110 DER bytes. kind=NONE expected=f43a40bfaf8e79c4
+- Grant isolated-domain: Clean kind=NONE length=4 uid=99011 • Public: readback failed (public isolated readback failed: IllegalStateException: Could not connect to Keystore service. Keystore may have crashed or not been initialized). | Hidden: readback failed (hidden isolated readback failed: IllegalStateException: Could not connect to Keystore service. Keystore may have crashed or not been initialized). | Private: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.)
+- Grant caller binding: Clean kind=NONE uid=99012 ownerReplay=KEY_NOT_FOUND • Private: owner replay rejected with KEY_NOT_FOUND.
+- Grant access vector: Clean kind=NONE uid=99013 accessVector=256 granteeRead=PERMISSION_DENIED • Private: grantee getKeyEntry(GRANT) rejected with PERMISSION_DENIED.
+- Grant self-domain: Clean kind=NONE length=0 grantId=true • Public: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.) | Hidden: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.) | Private: clean (Owner alias and grantee Domain.GRANT ordered full-chain fingerprints matched.); Grant-attest: Private grant-attest: clean APP getKeyEntry after GRANT custom attestation; baseline APP readback ok.
+- Keystore2: Unexpected reply
+- Legacy keystore: Legacy path not observed
+- listEntries: containsAlias and aliases aligned
+- listEntriesBatched: Cursor semantics aligned
+- Metadata key: KEY_ID normalized
+- Metadata shape: System fields present
+- Pure cert: Null key as expected
+- Pure cert level: No security level exposed
+- Pure cert metadata: Metadata security level exposed
+- Operation path: Native-style errors • updateAadServiceSpecific=true, oversizedUpdateRejected=true, abortInvalidatedHandle=true, compatFallback=false
+- Biometric TEE: User-auth key path available
+- Binder hook: Hook installed
+- Patch mode: generateKey/getKeyEntry aligned
+- Binder chain: Java and binder chains aligned • cycle1=keystoreVsGetKeyEntry=true, generateVsGetKeyEntryLeaf=true, generateVsGetKeyEntryChain=true, keystoreChainLength=4, getKeyEntryChainLength=4, cycle2=keystoreVsGetKeyEntry=true, generateVsGetKeyEntryLeaf=true, generateVsGetKeyEntryChain=true, keystoreChainLength=4, getKeyEntryChainLength=4, suspiciousLeafIssuerSpki=false, deleteEntryRemovedAlias=true
+- Update path: No anomaly • Grant ok
+- Update persistence: Clean kind=NONE prior=4 post=1 leafMatchesMarker=true • kind=NONE, marker leaf returned without retained prior narrative.
+- Pruning: 3/18 invalidated
+- Dual algorithm: RSA/EC chains aligned
+- ID attestation: No comparable IDs exposed
+- StrongBox: Not advertised
+- Native: libbinder.so ioctl GOT entry matched libc. | ioctl prologue matched the on-disk image. | Keystore-style binder honeypot stayed within normal bounds across 3 runs. median_gap=1ns, gap_mad=0ns, noise_floor=10000ns, median_ratio=100%. Keystore-style binder honeypot timing stayed within normal bounds across redundant backends. asm=med2462ns/mad1ns/p9520384ns, libc=med2462ns/mad1ns/p952692ns, syscall=med2461ns/mad1ns/p952538ns gap=1ns, noise_floor=10000ns, ratio=100% timer=arm64_cntvct, affinity=bound_cpu0.
+0/3 suspicious runs • median gap 1ns • noise floor 10.0us • median ratio 1.00x
+arm64_cntvct • bound_cpu0
+- Soter: Soter checks succeeded: Treble service was reachable and ASK/AuthKey/initSigh all succeeded.
+
+Certificates
+- Attestation certificate: Android Keystore Key -> 2.5.4.12=#0c03544545,2.5.4.5=#131063393834643033376634333336653338
+- Intermediate 1: 2.5.4.12=#0c03544545,2.5.4.5=#131063393834643033376634333336653338 -> 2.5.4.12=#0c03544545,2.5.4.5=#131038366361396163663334366464346431
+- Intermediate 2: 2.5.4.12=#0c03544545,2.5.4.5=#131038366361396163663334366464346431 -> 2.5.4.5=#131066393230303965383533623662303435
+- Root certificate: 2.5.4.5=#131066393230303965383533623662303435 -> 2.5.4.5=#131066393230303965383533623662303435
+
+  [INFO] Virtualization
+  Verdict: Virtualization scan has reduced coverage
+  Impact:
+  References:
+    • Android Virtualization Framework: https://source.android.com/docs/core/virtualization
+    • Android Emulator: https://developer.android.com/studio/run/emulator
+    • AOSP property_contexts: https://android.googlesource.com/platform/system/sepolicy/+/refs/heads/main/private/property_contexts
+
+  [CLEAR] Kernel Check
+  Verdict: No suspicious kernel markers
+  Impact:
+
+  [CLEAR] Memory
+  Verdict: No hook-like memory signals
+  Impact:
+
+  [CLEAR] Mount
+  Verdict: No suspicious mount-layer signal
+  Impact:
+
+  [CLEAR] Play Integrity Fix
+  Verdict: No Play Integrity residue surfaced
+  Impact:
+
+  [CLEAR] SU
+  Verdict: No root indicators
+  Impact:
+
+  [CLEAR] Zygisk
+  Verdict: No Zygisk runtime signal
+  Impact:
+  References:
+    • Cross-process FD trap looks for deleted-path descriptors that should survive clean specialization but may be silently closed by Zygisk-style FD sanitization.
+    • Native runtime probes correlate NeoZygisk TMP_PATH leakage, linker ownership, restricted-path loading, /proc maps and smaps drift, suspicious thread or fd residue, seccomp trap behavior, and heap entropy.
+    • Read this card together with Mount and Memory because those cards can still show corroborating Zygisk-facing traces even when this process keeps only partial residue.
+
+----- DEVICE INFO -----
+  Device Info
+  Identity:
+    Brand: Redmi
+    Manufacturer: Xiaomi
+    Model: Redmi Note 8 Pro
+    Device: begonia
+    Product: yaap_begonia
+    Board: begonia
+  Build:
+    Hardware: mt6785
+    Bootloader: unknown
+    Fingerprint: Redmi/begonia/begonia:11/RP1A.200720.011/V12.5.8.0.RGGMIXM:user/release-keys
+    Build ID: BP4A.251205.006
+    Incremental: eng.androi.20260801.111921
+    Build type: user
+  Android:
+    Tags: release-keys
+    Build user: android-build
+    Build host: r-0123456789abcdef-acab
+    SDK: 36
+    Release: 16
+    Codename: REL
+  Runtime:
+    Security patch: 2026-08-05
+    Preview SDK: 0
+    Primary ABI: arm64-v8a
+    ABI list: arm64-v8a, armeabi-v7a, armeabi
+    32-bit ABIs: armeabi-v7a, armeabi
+    64-bit ABIs: arm64-v8a
+  Context:
+    Kernel: 4.14.356-NoVA
+    Locale: en-IN
+    Time zone: Asia/Kolkata
+    Resolution: 1080 x 2340
+    Density: 440 dpi (2.8x)
+    Refresh rate: 60 Hz
+
+========================================
+  End of report
+========================================
