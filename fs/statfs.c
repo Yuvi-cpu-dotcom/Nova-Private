@@ -82,7 +82,11 @@ int vfs_statfs(const struct path *path, struct kstatfs *buf)
 
 	mnt = real_mount(path->mnt);
 	if (likely(susfs_is_current_proc_umounted())) {
-		for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID; mnt = mnt->mnt_parent) {}
+		/* Stop at the namespace root: its mnt_parent is itself and, in a
+		 * KSU-cloned namespace, its mnt_id can be >= DEFAULT_KSU_MNT_ID,
+		 * which would otherwise spin this walk forever. */
+		for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID && mnt->mnt_parent != mnt;
+		     mnt = mnt->mnt_parent) {}
 	}
 	error = statfs_by_dentry(mnt->mnt.mnt_root, buf);
 	if (!error)

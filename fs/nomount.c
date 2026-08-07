@@ -680,6 +680,10 @@ static void __nomount_inject_child_locked(struct nomount_dir_node *dir_node, str
     u32 i, old_num = 0;
 
     if (unlikely(!dir_node)) return;
+    /* name[] is a 256-byte fixed buffer; a virtual-path component longer
+     * than 255 bytes (parser allows up to PATH_MAX) would overflow it. */
+    if (unlikely(name_len >= sizeof(((struct nomount_child_name *)0)->name)))
+        return;
     rule->parent_dir = dir_node;
 
     old_array = rcu_dereference_protected(dir_node->child_array, lockdep_is_held(&nomount_write_mutex));
@@ -1360,11 +1364,13 @@ static int nomount_genl_del_uid(struct sk_buff *skb, struct genl_info *info)
         if (entry->uid == uid) {
             hash_del_rcu(&entry->node);
             found = true;
-            break; 
+            break;
         }
     }
-    atomic_dec(&nm_active_uids);
-    if (atomic_read(&nm_active_uids) == 0) static_branch_disable(&nomount_active_uids);
+    if (found) {
+        atomic_dec(&nm_active_uids);
+        if (atomic_read(&nm_active_uids) == 0) static_branch_disable(&nomount_active_uids);
+    }
     mutex_unlock(&nomount_write_mutex);
 
     if (found && entry) {

@@ -313,7 +313,10 @@ static int susfs_mark_inode_sus_kstat(char *target_pathname, struct st_susfs_sus
 
 out_path_put_path:
 	path_put(&path);
-	return 0;
+	/* propagate errors: callers treat a 0 return as "entry is live" and
+	 * skip cleanup, so a silent 0 here adds an inert kstat entry with
+	 * uninitialized is_fuse/target_dev */
+	return err;
 }
 
 void susfs_add_sus_kstat(void __user **user_info) {
@@ -680,8 +683,7 @@ void susfs_set_cmdline_or_bootconfig(void __user **user_info) {
 	struct st_susfs_spoof_cmdline_or_bootconfig *info = (struct st_susfs_spoof_cmdline_or_bootconfig *)kzalloc(sizeof(struct st_susfs_spoof_cmdline_or_bootconfig), GFP_KERNEL);
 
 	if (!info) {
-		info->err = -ENOMEM;
-		goto out_copy_to_user;
+		return; /* OOM: nothing to copy from/to without the buffer */
 	}
 
 	if (copy_from_user(info, (struct st_susfs_spoof_cmdline_or_bootconfig __user*)*user_info, sizeof(struct st_susfs_spoof_cmdline_or_bootconfig))) {
@@ -842,7 +844,9 @@ void susfs_add_open_redirect(void __user **user_info) {
 			}
 		}
 		spin_unlock(&susfs_spin_lock_open_redirect);
-		synchronize_rcu();
+		/* readers iterate under srcu_read_lock(&susfs_srcu_open_redirect);
+		 * synchronize_rcu() does NOT wait for SRCU sections -> UAF. */
+		synchronize_srcu(&susfs_srcu_open_redirect);
 		if (is_second_dup_found)
 			kfree(tmp_entry_redirected);
 		kfree(tmp_entry_target);
@@ -969,7 +973,9 @@ int susfs_open_redirect_spoof_vfs_readlink(struct inode *inode, char __user *buf
 				return -EFAULT;
 			}
 			srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
-			return 0;
+			/* readlink(2) must return the byte count placed in buffer,
+			 * not 0 — otherwise userspace sees an empty symlink. */
+			return strlen(entry->info.redirected_pathname);
 		}
 	}
 	srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
@@ -992,9 +998,11 @@ int susfs_open_redirect_spoof_do_proc_readlink(struct inode *inode, char *tmp_bu
 				srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
 				return -ENAMETOOLONG;
 			}
-			strncpy(tmp_buf, entry->info.redirected_pathname, strlen(entry->info.redirected_pathname));
+			/* include the NUL terminator so callers can use strlen() */
+			strncpy(tmp_buf, entry->info.redirected_pathname,
+				strlen(entry->info.redirected_pathname) + 1);
 			srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
-			return 0;
+			return strlen(entry->info.redirected_pathname);
 		}
 	}
 	srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
@@ -1136,12 +1144,15 @@ out_copy_to_user:
 static int copy_config_to_buf(const char *config_string, char *buf_ptr, size_t *copied_size, size_t bufsize) {
 	size_t tmp_size = strlen(config_string);
 
-	*copied_size += tmp_size;
-	if (*copied_size >= bufsize) {
+	/* Check BEFORE writing: the old code updated *copied_size and wrote
+	 * the string, then bailed — overflowing enabled_features[] by the
+	 * overflow amount. */
+	if (*copied_size + tmp_size >= bufsize) {
 		SUSFS_LOGE("bufsize is not big enough to hold the string.\n");
 		return -EINVAL;
 	}
 	strncpy(buf_ptr, config_string, tmp_size);
+	*copied_size += tmp_size;
 	return 0;
 }
 
@@ -1151,8 +1162,7 @@ void susfs_get_enabled_features(void __user **user_info) {
 	size_t copied_size = 0;
 
 	if (!info) {
-		info->err = -ENOMEM;
-		goto out_copy_to_user;
+		return; /* OOM: nothing to copy from/to without the buffer */
 	}
 
 	if (copy_from_user(info, (struct st_susfs_enabled_features __user*)*user_info, sizeof(struct st_susfs_enabled_features))) {
@@ -1368,17 +1378,20 @@ static int susfs_handle_sdcard_inode_event(
 	return 0;
 }
 
-static const struct fsnotify_ops fsnotify_ops = {
-	.handle_event = susfs_handle_sdcard_inode_event,
-};
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 static void susfs_free_sdcard_mark(
 	struct fsnotify_mark *mark)
 {
 	kfree(mark);
 }
+
+static const struct fsnotify_ops fsnotify_ops = {
+	.handle_event = susfs_handle_sdcard_inode_event,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	/* 4.10+ moved the mark free callback into fsnotify_ops; without it,
+	 * fsnotify_final_mark_destroy() calls a NULL free_mark and panics. */
+	.free_mark = susfs_free_sdcard_mark,
 #endif
+};
 
 static int add_mark_on_inode(
 	struct inode *inode,
@@ -1398,13 +1411,19 @@ static int add_mark_on_inode(
 	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	fsnotify_init_mark(m, g);
-	ret = fsnotify_add_mark(m, inode, NULL, 0);
 #else
 	fsnotify_init_mark(m, susfs_free_sdcard_mark);
+#endif
+	/* Set mask AFTER init (which zeroes it) but BEFORE adding the mark:
+	 * fsnotify_add_mark() only recalculates the inode's fsnotify mask
+	 * when mark->mask is non-zero at add time, otherwise the watch can
+	 * never fire. */
+	m->mask = mask;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	ret = fsnotify_add_mark(m, inode, NULL, 0);
+#else
 	ret = fsnotify_add_mark(m, g, inode, NULL, 0);
 #endif
-
-	m->mask = mask;
 
 	if (ret) {
 		fsnotify_put_mark(m);

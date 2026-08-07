@@ -1117,7 +1117,14 @@ susfs_open_redirect_retry:
 					susfs_redirected_once = true;
 					filp_close(f, NULL);
 					putname(tmp);
-					tmp = getname(susfs_redirected_name);
+					/* susfs_redirected_name is a kernel buffer: getname()
+					 * (user copy) would always fail with -EFAULT on arm64
+					 * and the retry would deref the ERR_PTR. */
+					tmp = getname_kernel(susfs_redirected_name);
+					if (IS_ERR(tmp)) {
+						put_unused_fd(fd);
+						return PTR_ERR(tmp);
+					}
 					goto susfs_open_redirect_retry;
 				}
 			}

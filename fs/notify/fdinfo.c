@@ -111,7 +111,8 @@ static void inotify_fdinfo(struct seq_file *m, struct fsnotify_mark *mark)
 				goto out_seq_printf;
 			}
 			dpath = d_path(&file->f_path, pathname, PAGE_SIZE);
-			if (!dpath) {
+			/* d_path() returns ERR_PTR on failure, not NULL. */
+			if (IS_ERR(dpath)) {
 				goto out_free_pathname;
 			}
 			if (kern_path(dpath, 0, &path)) {

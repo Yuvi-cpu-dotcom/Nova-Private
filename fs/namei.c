@@ -220,7 +220,10 @@ getname_flags(const char __user *filename, int flags, int *empty)
 		result = nomount_handle_getname(result);
 	}
 #endif
-	audit_getname(result);
+	/* nomount_handle_getname() can return ERR_PTR(-ENOENT) for private-dir
+	 * denials; audit_getname() would dereference it. */
+	if (!IS_ERR(result))
+		audit_getname(result);
 	return result;
 }
 
@@ -266,7 +269,8 @@ getname_kernel(const char * filename)
 		result = nomount_handle_getname(result);
 	}
 #endif
-	audit_getname(result);
+	if (!IS_ERR(result))
+		audit_getname(result);
 
 	return result;
 }
@@ -2565,6 +2569,9 @@ static int filename_lookup(int dfd, struct filename *name, unsigned flags,
 	restore_nameidata();
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 	if (!retval && path->dentry->d_inode && susfs_is_inode_sus_path(path->dentry->d_inode)) {
+		/* the caller only drops the path ref on success, so release it
+		 * here to avoid leaking a dentry+mount ref per hidden lookup */
+		path_put(path);
 		putname(name);
 		return -ENOENT;
 	}
@@ -5063,8 +5070,10 @@ static int generic_readlink(struct dentry *dentry, char __user *buffer,
 	}
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 	if (PRE_CHECK_OPEN_REDIRECT(inode)) {
+		/* spoof returns the byte count placed in buffer on success
+		 * (>0); negative errors fall through to the native path. */
 		res = susfs_open_redirect_spoof_vfs_readlink(inode, buffer, buflen);
-		if (!res) {
+		if (res > 0) {
 			do_delayed_call(&done);
 			return res;
 		}
