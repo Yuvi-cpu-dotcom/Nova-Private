@@ -28,6 +28,7 @@
 #include <net/af_unix.h>
 #include <linux/ip.h>
 #include <linux/audit.h>
+#include <linux/jump_label.h>
 #include <linux/ipv6.h>
 #include <net/ipv6.h>
 #include "avc.h"
@@ -45,7 +46,7 @@
 #endif
 
 #ifdef CONFIG_KSU_SUSFS
-bool susfs_is_avc_log_spoofing_enabled = false;
+DECLARE_STATIC_KEY_FALSE(susfs_is_avc_log_spoofing_enabled);
 #endif
 
 

@@ -13,9 +13,6 @@
 #include <linux/susfs_def.h>
 #include "mount.h"
 #endif
-#ifdef CONFIG_NOMOUNT
-extern void nomount_spoof_statfs(const struct path *path, struct kstatfs *buf);
-#endif
 #include "internal.h"
 
 static int flags_by_mnt(int mnt_flags)
@@ -96,9 +93,6 @@ int vfs_statfs(const struct path *path, struct kstatfs *buf)
 	error = statfs_by_dentry(path->dentry, buf);
 	if (!error)
 		buf->f_flags = calculate_f_flags(path->mnt);
-#ifdef CONFIG_NOMOUNT
-	nomount_spoof_statfs(path, buf);
-#endif
 	return error;
 #endif
 }
