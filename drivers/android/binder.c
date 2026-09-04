@@ -78,6 +78,7 @@
 #include "binder_alloc.h"
 #include "binder_internal.h"
 #include "binder_trace.h"
+#include <trace/hooks/binder.h>
 #ifdef CONFIG_MTK_TASK_TURBO
 #include <mt-plat/turbo_common.h>
 #endif
@@ -3745,6 +3746,7 @@ static void binder_transaction(struct binder_proc *proc,
 		target_proc = target_thread->proc;
 		target_proc->tmp_ref++;
 		binder_inner_proc_unlock(target_thread->proc);
+		trace_android_vh_binder_reply(target_proc, proc, thread, tr);
 #ifdef BINDER_WATCHDOG
 		e->service[0] = '\0';
 #endif
@@ -3803,6 +3805,7 @@ static void binder_transaction(struct binder_proc *proc,
 #ifdef BINDER_WATCHDOG
 		strncpy(e->service, target_node->name, MAX_SERVICE_NAME_LEN);
 #endif
+		trace_android_vh_binder_trans(target_proc, proc, thread, tr);
 		if (security_binder_transaction(proc->cred,
 						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
@@ -4954,6 +4957,7 @@ static int binder_wait_for_work(struct binder_thread *thread,
 		if (do_proc_work)
 			list_add(&thread->waiting_thread_node,
 				 &proc->waiting_threads);
+		trace_android_vh_binder_wait_for_work(do_proc_work, thread, proc);
 		binder_inner_proc_unlock(proc);
 		schedule();
 		binder_inner_proc_lock(proc);
@@ -7327,6 +7331,120 @@ err_alloc_device_names_failed:
 }
 
 device_initcall(binder_init);
+
+#ifdef CONFIG_MILLET_BINDER_GKI
+/*
+ * Exported accessors used by the Xiaomi "millet" (smart freezer) binder
+ * driver.  On upstream-style 4.14 binder the binder_proc/thread/transaction
+ * structures live inside binder.c, so millet reaches them through these
+ * helpers instead of dereferencing them directly.
+ */
+struct task_struct *oem_binder_proc_tsk(struct binder_proc *proc)
+{
+	return proc ? proc->tsk : NULL;
+}
+EXPORT_SYMBOL_GPL(oem_binder_proc_tsk);
+
+int oem_binder_thread_pid(struct binder_thread *thread)
+{
+	return thread ? thread->pid : 0;
+}
+EXPORT_SYMBOL_GPL(oem_binder_thread_pid);
+
+struct task_struct *oem_binder_alloc_owner(struct binder_alloc *alloc)
+{
+	struct binder_proc *proc;
+
+	if (!alloc)
+		return NULL;
+
+	proc = container_of(alloc, struct binder_proc, alloc);
+	return proc->tsk;
+}
+EXPORT_SYMBOL_GPL(oem_binder_alloc_owner);
+
+/*
+ * Return the task that @thread is currently blocked waiting on receiving a
+ * reply from (the "to_proc" of its top-most transaction), taking a reference
+ * on it.  Returns NULL if the thread is not waiting on any transaction.
+ */
+struct task_struct *oem_binder_wait4_task(struct binder_thread *thread,
+					  int *caller_tid, bool *oneway,
+					  unsigned int *code)
+{
+	struct binder_transaction *t;
+	struct task_struct *dst = NULL;
+
+	if (!thread || !thread->transaction_stack || thread->is_dead)
+		return NULL;
+
+	t = thread->transaction_stack;
+	spin_lock(&t->lock);
+	if (t->to_proc && t->to_proc->tsk) {
+		dst = t->to_proc->tsk;
+		get_task_struct(dst);
+		if (caller_tid)
+			*caller_tid = thread->pid;
+		if (oneway)
+			*oneway = t->flags & TF_ONE_WAY;
+		if (code)
+			*code = t->code;
+	}
+	spin_unlock(&t->lock);
+
+	return dst;
+}
+EXPORT_SYMBOL_GPL(oem_binder_wait4_task);
+
+static bool oem_binder_proc_busy_ilocked(struct binder_proc *proc)
+{
+	struct rb_node *n;
+	struct binder_thread *thread;
+
+	if (!binder_worklist_empty_ilocked(&proc->todo))
+		return true;
+
+	for (n = rb_first(&proc->threads); n != NULL; n = rb_next(n)) {
+		thread = rb_entry(n, struct binder_thread, rb_node);
+		if (!thread->task)
+			continue;
+		if (!binder_worklist_empty_ilocked(&thread->todo))
+			return true;
+		if (thread->transaction_stack)
+			return true;
+	}
+
+	return false;
+}
+
+/*
+ * Return true when every binder process owned by @uid is idle (no pending
+ * binder work and no thread blocked in a transaction).
+ */
+bool oem_binder_uid_procs_idle(int uid)
+{
+	struct binder_proc *proc;
+	bool idle = true;
+
+	mutex_lock(&binder_procs_lock);
+	hlist_for_each_entry(proc, &binder_procs, proc_node) {
+		if (!proc->tsk || task_uid(proc->tsk).val != uid)
+			continue;
+
+		binder_inner_proc_lock(proc);
+		if (oem_binder_proc_busy_ilocked(proc))
+			idle = false;
+		binder_inner_proc_unlock(proc);
+
+		if (!idle)
+			break;
+	}
+	mutex_unlock(&binder_procs_lock);
+
+	return idle;
+}
+EXPORT_SYMBOL_GPL(oem_binder_uid_procs_idle);
+#endif /* CONFIG_MILLET_BINDER_GKI */
 
 #define CREATE_TRACE_POINTS
 #include "binder_trace.h"
