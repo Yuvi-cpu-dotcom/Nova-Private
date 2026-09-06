@@ -52,11 +52,13 @@ echo "== decompress kernel"
 gunzip -kf Image.gz
 
 echo "== kernel-patch with kptools"
-if "$KTOOLS" -h 2>&1 | grep -q -- "--kpimg"; then
-    # legacy KernelPatch CLI (0.7.x-era): -p <img> --kpimg --skey --out
-    "$KTOOLS" -p Image --kpimg "$KPIMG" --skey "$KEY" --out Image-patched
-else
+if "$KTOOLS" -h 2>&1 | grep -q -- "--image"; then
+    # new CLI (-i/--image kernel, -k/--kpimg, -o, -s); 0.10.x+ help lists
+    # --kpimg as an alias, so key the detection on --image.
     "$KTOOLS" -p -i Image -k "$KPIMG" -o Image-patched -s "$KEY"
+else
+    # legacy CLI (0.7.x-era): -p <img> --kpimg --skey --out
+    "$KTOOLS" -p Image --kpimg "$KPIMG" --skey "$KEY" --out Image-patched
 fi
 "$KTOOLS" -l -i Image-patched 2>/dev/null | sed -n '1,12p' || true
 
