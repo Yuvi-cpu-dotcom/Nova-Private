@@ -59,7 +59,12 @@ echo "== repack gz + dtb, rebuild zip"
 gzip -9 -c Image-patched > Image.gz
 rm -f Image Image-patched
 
-OUT="NoVA-KSU-APatch-$(basename "$SRC_ZIP" .zip | sed 's/^NoVA-KSU-//').zip"
+BASE="$(basename "$SRC_ZIP" .zip)"
+case "$BASE" in
+    NoVA-KSU-*) OUT="NoVA-KSU-APatch-${BASE#NoVA-KSU-}.zip" ;;
+    NoVA-*)     OUT="NoVA-APatch-${BASE#NoVA-}.zip" ;;
+    *)          OUT="APatch-${BASE}.zip" ;;
+esac
 python3 - <<PY
 import zipfile
 OUT="$OUT"

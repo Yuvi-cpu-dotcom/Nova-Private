@@ -10,6 +10,7 @@ KSU_OUT_DIR="$KERNEL_PATH/out-ksu"
 AK3_DIR="$KERNEL_PATH/AnyKernel3"
 DEFCONFIG="begonia_user_defconfig"
 KSU_DEFCONFIG="${DEFCONFIG%_defconfig}_ksu_defconfig"
+APATCH_DEFCONFIG="${DEFCONFIG%_defconfig}_apatch_defconfig"
 CLANG_DIR="$KERNEL_PATH/clang"
 CCACHE_DIR="$KERNEL_PATH/.ccache"
 MKDTBOIMG="$KERNEL_PATH/.tools/mkdtboimg.py"
@@ -221,6 +222,21 @@ build_ksu() {
     git checkout -- "arch/arm64/configs/$DEFCONFIG"
 }
 
+build_apatch() {
+    # Plain kernel (no KernelSU/SUSFS in-tree) from the dedicated apatch
+    # defconfig, then kernel-patch it with KernelPatch for APatch and ship
+    # a NoVA-APatch-*.zip. The apatch defconfig is never fed to the KSU
+    # build, so KernelSU-Next's Kbuild cannot mutate it.
+    _compile_and_package "$OUT_DIR" "$APATCH_DEFCONFIG" "NoVA"
+
+    LAST_ZIP="$(ls -t ./NoVA-[0-9]*.zip | head -1)"
+    if [[ -z "$LAST_ZIP" ]]; then
+        echo "Normal build produced no zip!" >&2
+        exit 1
+    fi
+    ./scripts/make-apatch-zip.sh "$LAST_ZIP"
+}
+
 case "${1:-}" in
     -b|--build)
         rm -f ./NoVA-[0-9]*.zip
@@ -235,6 +251,10 @@ case "${1:-}" in
         build_kernel
         build_ksu
         ;;
+    -p|--build-apatch)
+        rm -f ./NoVA-[0-9]*.zip ./NoVA-APatch-*.zip
+        build_apatch
+        ;;
     -r|--regen)
         regen_defconfig "${2:-}"
         ;;
@@ -244,6 +264,7 @@ case "${1:-}" in
         echo
         echo "  -b, --build       Build normal kernel"
         echo "  -k, --build-ksu   Build KernelSU + SUSFS kernel"
+        echo "  -p, --build-apatch Build normal kernel + APatch (KernelPatch) variant"
         echo "  -a, --build-all   Build both normal and KernelSU kernels"
         echo "  -r, --regen       Regenerate defconfig"
         exit 1
