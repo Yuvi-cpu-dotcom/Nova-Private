@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/device.h>
+#include <linux/workqueue.h>
 #include <linux/kdev_t.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
@@ -3183,7 +3184,7 @@ static struct platform_driver VowDrv_driver = {
 	},
 };
 
-static int VowDrv_mod_init(void)
+static int VowDrv_mod_init_impl(void)
 {
 	int ret = 0;
 
@@ -3259,6 +3260,21 @@ static void  VowDrv_mod_exit(void)
 	vow_pcm_dump_deinit();
 	VOWDRV_DEBUG("-%s()\n", __func__);
 }
+
+static struct work_struct vow_drv_init_work;
+
+static void vow_drv_init_worker(struct work_struct *work)
+{
+	VowDrv_mod_init_impl();
+}
+
+static int VowDrv_mod_init(void)
+{
+	INIT_WORK(&vow_drv_init_work, vow_drv_init_worker);
+	schedule_work(&vow_drv_init_work);
+	return 0;
+}
+
 module_init(VowDrv_mod_init);
 module_exit(VowDrv_mod_exit);
 
