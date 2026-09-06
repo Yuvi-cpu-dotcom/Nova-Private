@@ -13,12 +13,20 @@ KSU_DEFCONFIG="${DEFCONFIG%_defconfig}_ksu_defconfig"
 CLANG_DIR="$KERNEL_PATH/clang"
 CCACHE_DIR="$KERNEL_PATH/.ccache"
 MKDTBOIMG="$KERNEL_PATH/.tools/mkdtboimg.py"
+PACKAGING_DIR="$KERNEL_PATH/packaging/ak3_overlay"
 
 export LC_ALL=C
 export ARCH=arm64
 export KBUILD_BUILD_USER="Wahid7852"
 export KBUILD_BUILD_HOST="NoVA"
 export USE_HOST_LEX=yes
+
+# Conservative codegen for a 4.14 tree under newer Clang: these flags stop
+# UB-based vectors (-fno-strict-overflow) and NULL-deref assumption
+# (-fno-delete-null-pointer-checks) from silently miscompiling code that
+# would otherwise fault at boot. KCFLAGS is the external CFLAGS override in
+# kbuild (env KBUILD_CFLAGS is overwritten by the root Makefile).
+export KCFLAGS="${KCFLAGS:-} -fno-strict-overflow -fno-delete-null-pointer-checks"
 
 CC_CMD="clang"
 HOSTCC_CMD="clang"
@@ -72,6 +80,28 @@ regen_defconfig() {
     local defconfig="${1:-$DEFCONFIG}"
     make O="$OUT_DIR" ARCH=arm64 "$defconfig" savedefconfig
     cp "$OUT_DIR/defconfig" "arch/arm64/configs/$defconfig"
+}
+
+# Stage the begonia idle-power tuning into AnyKernel3 before zipping:
+#  1) copy ramdisk overlay (init.begonia.tuning.rc) into the boot ramdisk
+#  2) splice the ramdisk unpack/import/repack into anykernel.sh (idempotent)
+_stage_begonia_tuning() {
+    if [[ ! -d "$PACKAGING_DIR" ]]; then
+        echo "==> No packaging overlay found, skipping begonia tuning stage"
+        return 0
+    fi
+
+    if [[ -d "$PACKAGING_DIR/ramdisk" ]]; then
+        cp -af "$PACKAGING_DIR"/ramdisk/* "$AK3_DIR/ramdisk/"
+    fi
+
+    if [[ -f "$AK3_DIR/anykernel.sh" ]]; then
+        if ! grep -Fq "init.begonia.tuning.rc" "$AK3_DIR/anykernel.sh"; then
+            sed -i \
+                -e 's/^split_boot;$/dump_boot;\n\n# Nova: merge ramdisk\/ overlay and inject tuning rc import (idempotent)\nif [ -f "$RAMDISK\/init.rc" ]; then\n    grep -Fq "init.begonia.tuning.rc" "$RAMDISK\/init.rc" 2>\/dev\/null || \\\n        sed -i "1i import \/init.begonia.tuning.rc" "$RAMDISK\/init.rc";\nfi;\nrepack_ramdisk;/' \
+                "$AK3_DIR/anykernel.sh"
+        fi
+    fi
 }
 
 _compile_and_package() {
@@ -155,6 +185,8 @@ _compile_and_package() {
     cp "$KERNEL_DTB" "$AK3_DIR/dtb"
 
     python3 "$MKDTBOIMG" create "$AK3_DIR/dtbo.img" --page_size=2048 "${KERNEL_DTBOS[@]}"
+
+    _stage_begonia_tuning
 
     (
         cd "$AK3_DIR"

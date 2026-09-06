@@ -1,0 +1,11 @@
+# Nova begonia idle-power tuning
+# MT6785: policy0 = 6x Cortex-A55 (little), policy6 = 2x Cortex-A76 (big)
+# Slow schedutil dvfs to stop A76 turbo on short bursts and let freq decay
+# to the cluster min after a burst instead of hopping mid-states.
+on property:sys.boot_completed=1
+    # little cluster
+    write /sys/devices/system/cpu/cpufreq/policy0/up_rate_limit_us 2000
+    write /sys/devices/system/cpu/cpufreq/policy0/down_rate_limit_us 15000
+    # big cluster
+    write /sys/devices/system/cpu/cpufreq/policy6/up_rate_limit_us 5000
+    write /sys/devices/system/cpu/cpufreq/policy6/down_rate_limit_us 20000
