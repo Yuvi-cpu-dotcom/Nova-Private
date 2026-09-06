@@ -1857,6 +1857,12 @@ static void binder_set_priority(struct task_struct *task,
 static void binder_restore_priority(struct task_struct *task,
 				    struct binder_priority desired)
 {
+	bool skip = false;
+
+	trace_android_vh_binder_priority_skip(task, &skip);
+	if (skip)
+		return;
+
 	binder_do_set_priority(task, desired, /* verify = */ false);
 }
 
@@ -1893,6 +1899,7 @@ static void binder_transaction_priority(struct task_struct *task,
 	}
 
 	binder_set_priority(task, desired_prio);
+	trace_android_vh_binder_set_priority(t, task);
 }
 
 static struct binder_node *binder_get_node_ilocked(struct binder_proc *proc,

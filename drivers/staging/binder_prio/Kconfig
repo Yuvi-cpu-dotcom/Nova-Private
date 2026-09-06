@@ -1,0 +1,7 @@
+config BINDER_PRIO
+	tristate "Begonia binder priority optimization"
+	default y
+	help
+	  Boosts select binder transaction targets to SCHED_FIFO during
+	  synchronous transactions (MediaTek begonia/MIUI adaptation of
+	  Xiaomi's binder_prio). Requires Android vendor binder hooks.
