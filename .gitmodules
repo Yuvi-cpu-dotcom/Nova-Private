@@ -2,3 +2,7 @@
 	path = KernelSU
 	url = https://github.com/Yuvi-cpu-dotcom/ReSukiSU-A57-SUSFS21
 	branch = a57-susfs21
+
+[submodule "NoMount"]
+	path = NoMount
+	url = https://github.com/maxsteeel/nomount
